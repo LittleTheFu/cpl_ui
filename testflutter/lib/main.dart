@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data'; // 导入 Uint8List
+import 'dart:async'; // 导入 Completer
 
 import 'package:flutter/material.dart';
 import 'dart:math'; // 导入 min/max 函数
@@ -46,16 +47,29 @@ class _CompilerIDEState extends State<CompilerIDE> {
 
   Socket? _socket;
   bool _isConnected = false;
+  // ✅ 新增：用于在 _sendCommand 中等待响应的 Completer
+  Completer<String>? _responseCompleter;
 
   @override
   void initState() {
     super.initState();
+    print('FLUTTER DEBUG: initState entered.'); // 新增调试打印
     _connectToServer(); // 尝试在应用启动时连接
+    print('FLUTTER DEBUG: _connectToServer called from initState.'); // 新增调试打印
   }
 
   @override
   void dispose() {
     _socket?.close();
+    // ✅ 确保 Completer 在 dispose 时也被完成或取消
+    if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+      _responseCompleter!.completeError(
+        'Socket disposed before response received.',
+      );
+      print(
+        'FLUTTER DEBUG: _responseCompleter completed with error during dispose.',
+      );
+    }
     _codeController.dispose();
     _outputController.dispose();
     _serverIpController.dispose();
@@ -70,8 +84,10 @@ class _CompilerIDEState extends State<CompilerIDE> {
   }
 
   Future<void> _connectToServer() async {
+    print('FLUTTER DEBUG: _connectToServer entered.'); // 新增调试打印
     if (_isConnected) {
       _appendToOutput('Already connected.');
+      print('FLUTTER DEBUG: Already connected, returning.'); // 新增调试打印
       return;
     }
 
@@ -80,55 +96,85 @@ class _CompilerIDEState extends State<CompilerIDE> {
 
     if (port == null) {
       _appendToOutput('Invalid port number.');
+      print('FLUTTER DEBUG: Invalid port, returning.'); // 新增调试打印
       return;
     }
 
     _appendToOutput('Connecting to $ip:$port...');
     try {
+      print('FLUTTER DEBUG: Attempting Socket.connect.'); // 新增调试打印
       _socket = await Socket.connect(
         ip,
         port,
         timeout: const Duration(seconds: 5),
       );
       _appendToOutput('Connected to $ip:$port');
+      print('FLUTTER DEBUG: Socket connected successfully.'); // 新增调试打印
       setState(() {
         _isConnected = true;
       });
 
       _socket!.listen(
         (Uint8List data) {
+          print('FLUTTER DEBUG: Data received!');
           final response = utf8.decode(data);
           _appendToOutput('Server response: $response');
-          // 这里可以解析JSON响应并更新UI
-          // 例如:
-          // try {
-          //   final jsonResponse = jsonDecode(response);
-          //   _appendToOutput('Parsed JSON: ${jsonResponse['message']}');
-          // } catch (e) {
-          //   _appendToOutput('Failed to parse JSON response: $e');
-          // }
+          // ✅ 收到数据时，完成 Completer
+          if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+            _responseCompleter!.complete(response);
+            print('FLUTTER DEBUG: Completer completed with response.');
+          } else {
+            print(
+              'FLUTTER DEBUG: Data received but no active completer or already completed.',
+            );
+          }
         },
         onDone: () {
+          print('FLUTTER DEBUG: Connection Done!');
           _appendToOutput('Server disconnected.');
           setState(() {
             _isConnected = false;
           });
+          // ✅ 当连接关闭时，用错误完成 Completer
+          if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+            _responseCompleter!.completeError('Socket disconnected.');
+            print(
+              'FLUTTER DEBUG: Completer completed with error: Socket disconnected.',
+            );
+          }
           _socket!.destroy();
         },
         onError: (error) {
+          print('FLUTTER DEBUG: Socket Error! $error');
           _appendToOutput('Socket error: $error');
           setState(() {
             _isConnected = false;
           });
+          // ✅ 当发生错误时，用错误完成 Completer
+          if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+            _responseCompleter!.completeError('Socket error: $error');
+            print(
+              'FLUTTER DEBUG: Completer completed with error: Socket error: $error',
+            );
+          }
           _socket!.destroy();
         },
         cancelOnError: true,
       );
+      print('FLUTTER DEBUG: Socket listener set up.'); // 新增调试打印
     } catch (e) {
       _appendToOutput('Connection failed: $e');
+      print('FLUTTER DEBUG: Connection failed in catch block: $e'); // 新增调试打印
       setState(() {
         _isConnected = false;
       });
+      // ✅ 连接失败时，也确保 Completer 错误完成
+      if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+        _responseCompleter!.completeError('Connection failed: $e');
+        print(
+          'FLUTTER DEBUG: Completer completed with error: Connection failed: $e',
+        );
+      }
     }
   }
 
@@ -155,12 +201,15 @@ class _CompilerIDEState extends State<CompilerIDE> {
       return;
     }
 
-    final Map<String, dynamic> request = {'command': command};
+    // ✅ 重置 Completer
+    // 确保每次新的命令都对应一个新的 Completer
+    _responseCompleter = Completer<String>();
+    print('FLUTTER DEBUG: New _responseCompleter created.');
 
+    final Map<String, dynamic> request = {'command': command};
     if (code != null) {
       request['code'] = code;
     }
-
     final jsonString = jsonEncode(request);
     final payload = '$jsonString\n'; // 添加换行符作为消息结束标志
 
@@ -178,12 +227,38 @@ class _CompilerIDEState extends State<CompilerIDE> {
     // --- 调试打印结束 ---
 
     try {
-      // ✅ 关键修改：使用 add 方法发送原始字节数据
       _socket!.add(encodedBytes);
       await _socket!.flush(); // 确保数据被立即发送
       _appendToOutput('Command "$command" sent successfully.');
+      print('FLUTTER DEBUG: Payload sent and flushed.');
+
+      // ✅ 关键：等待响应
+      print('FLUTTER DEBUG: Waiting for server response via Completer...');
+      String serverResponse = await _responseCompleter!.future.timeout(
+        const Duration(seconds: 5), // 设置超时时间
+        onTimeout: () {
+          print('FLUTTER DEBUG: Server response timeout after 5 seconds.');
+          // 在超时时抛出异常，或者返回一个特定的错误消息
+          throw TimeoutException('Server did not respond within 5 seconds.');
+        },
+      );
+      _appendToOutput(
+        'FLUTTER DEBUG: Received response after waiting: $serverResponse',
+      );
     } catch (e) {
-      _appendToOutput('Error sending command: $e');
+      _appendToOutput('Error sending command or waiting for response: $e');
+      print('FLUTTER DEBUG: Exception in _sendCommand: $e');
+    } finally {
+      // ✅ 确保 Completer 在请求处理完成后被清空或重置
+      // 避免 Completer 被多次完成的错误
+      if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+        _responseCompleter!.completeError(
+          'Request finished or timed out before completer was explicitly completed.',
+        );
+        print('FLUTTER DEBUG: Completer force-completed in finally block.');
+      }
+      _responseCompleter = null;
+      print('FLUTTER DEBUG: _responseCompleter set to null.');
     }
   }
 
