@@ -164,10 +164,10 @@ class _CompilerIDEState extends State<CompilerIDE> {
     final jsonString = jsonEncode(request);
     final payload = '$jsonString\n'; // 添加换行符作为消息结束标志
 
-    // --- 调试打印 ---
+    // --- 调试打印 (保留) ---
     _appendToOutput('Sending payload: "$payload"');
     _appendToOutput('Payload string length: ${payload.length}');
-    final encodedBytes = utf8.encode(payload);
+    final encodedBytes = utf8.encode(payload); // 这是一个 Uint8List，包含了原始的字节数据
     _appendToOutput('Encoded bytes length: ${encodedBytes.length}');
     _appendToOutput(
       'First 10 bytes: ${encodedBytes.sublist(0, min(10, encodedBytes.length))}',
@@ -178,7 +178,8 @@ class _CompilerIDEState extends State<CompilerIDE> {
     // --- 调试打印结束 ---
 
     try {
-      _socket!.write(encodedBytes);
+      // ✅ 关键修改：使用 add 方法发送原始字节数据
+      _socket!.add(encodedBytes);
       await _socket!.flush(); // 确保数据被立即发送
       _appendToOutput('Command "$command" sent successfully.');
     } catch (e) {
