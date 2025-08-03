@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:testflutter/ffi_bridge.dart'; // 导入 ffi_bridge.dart
 
+// Solarized Dark-inspired color palette
+const Color _solBase03 = Color(0xFF002b36); // Background
+const Color _solBase02 = Color(0xFF073642); // Highlight Background
+const Color _solBase01 = Color(0xFF586e75); // Comments/Muted Text
+const Color _solBase0 = Color(0xFF839496);  // Body Text
+const Color _solGreen = Color(0xFF859900);  // Green (Instructions, True Flag)
+const Color _solCyan = Color(0xFF2aa198);   // Cyan (Memory, Register Values)
+const Color _solRed = Color(0xFFdc322f);     // Red (False Flag)
+const Color _solBlue = Color(0xFF268bd2);    // Blue (AppBar, Highlight)
+
 void main() {
   runApp(const MyApp());
 }
@@ -13,9 +23,29 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '汇编代码显示',
       theme: ThemeData(
-        primarySwatch: Colors.blueGrey,
-        brightness: Brightness.dark, // 使用暗色主题，更适合代码显示
-        fontFamily: 'monospace', // 尝试使用等宽字体
+        primaryColor: _solBlue,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: _solBase03,
+        fontFamily: 'monospace',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: _solBase02,
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            color: _solBase0,
+            fontFamily: 'monospace',
+            fontSize: 18,
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: _solBase02,
+          labelStyle: const TextStyle(color: _solBase0, fontFamily: 'monospace'),
+          secondaryLabelStyle: const TextStyle(color: _solBase0, fontFamily: 'monospace'),
+          selectedColor: _solBlue,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: _solBlue,
+        ),
+        dividerColor: _solBase01,
       ),
       home: const AssemblyCodeView(),
     );
@@ -52,14 +82,12 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   }
 
   void _scrollToCurrentLine() {
-    // 确保UI构建完成后再滚动
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients && _currentPc >= 0) {
-        final viewportHeight = 300.0; // 视图高度
+        final viewportHeight = 300.0;
         final itemPosition = _currentPc * _itemHeight;
         var offset = itemPosition - (viewportHeight / 2) + (_itemHeight / 2);
 
-        // 限制偏移量，防止超出滚动范围
         if (offset < 0) {
           offset = 0;
         }
@@ -107,7 +135,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             width: 400,
             child: Container(
               padding: const EdgeInsets.all(8.0),
-              color: Colors.grey[900],
+              color: _solBase03,
               child: ListView.builder(
                 controller: _scrollController,
                 itemCount: _assemblyCodeLines.length,
@@ -120,9 +148,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
 
                   return Container(
                     height: _itemHeight,
-                    color: isCurrentPc
-                        ? Colors.blueAccent.withAlpha((255 * 0.3).round())
-                        : Colors.transparent,
+                    color: isCurrentPc ? _solBase02 : Colors.transparent,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2.0),
                       child: Row(
@@ -132,8 +158,8 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                             width: 60,
                             child: Text(
                               lineNumber,
-                              style: TextStyle(
-                                color: Colors.grey[600],
+                              style: const TextStyle(
+                                color: _solBase01,
                                 fontFamily: 'monospace',
                                 fontSize: 14.0,
                               ),
@@ -145,7 +171,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                             child: Text(
                               instruction,
                               style: const TextStyle(
-                                color: Colors.lightGreenAccent,
+                                color: _solGreen,
                                 fontFamily: 'monospace',
                                 fontSize: 14.0,
                               ),
@@ -159,7 +185,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               ),
             ),
           ),
-          const VerticalDivider(),
+          const VerticalDivider(width: 1, color: _solBase01),
           // Register View
           SizedBox(
             height: double.infinity,
@@ -169,7 +195,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _solBase0)),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8.0,
@@ -179,23 +205,22 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                           return Chip(
                             label: Text(
                               'R$index: ${_registers[index]}',
-                              style: const TextStyle(fontFamily: 'monospace'),
                             ),
                           );
                         }),
                         Chip(
-                          label: Text(
-                            'ZF: ${_zeroFlag ? 1 : 0}',
-                            style: const TextStyle(fontFamily: 'monospace'),
+                          label: const Text(
+                            'ZF',
+                            style: TextStyle(color: _solBase03),
                           ),
-                          backgroundColor: _zeroFlag ? Colors.green : Colors.red,
+                          backgroundColor: _zeroFlag ? _solGreen : _solRed,
                         ),
                         Chip(
-                          label: Text(
-                            'SF: ${_signFlag ? 1 : 0}',
-                            style: const TextStyle(fontFamily: 'monospace'),
+                          label: const Text(
+                            'SF',
+                            style: TextStyle(color: _solBase03),
                           ),
-                          backgroundColor: _signFlag ? Colors.green : Colors.red,
+                          backgroundColor: _signFlag ? _solGreen : _solRed,
                         ),
                       ],
                     ),
@@ -204,14 +229,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               ),
             ),
           ),
-          const VerticalDivider(),
+          const VerticalDivider(width: 1, color: _solBase01),
           // Memory View
           Expanded(
             child: Column(
               children: [
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _solBase0)),
                 ),
                 Expanded(
                   child: Padding(
@@ -225,12 +250,12 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                             children: [
                               Text(
                                 '0x${(index).toRadixString(16).padLeft(8, '0')}:',
-                                style: TextStyle(color: Colors.grey[600]),
+                                style: const TextStyle(color: _solBase01),
                               ),
                               const SizedBox(width: 10),
                               Text(
                                 '0x${_memory[index].toRadixString(16).padLeft(8, '0')}',
-                                style: const TextStyle(color: Colors.cyanAccent),
+                                style: const TextStyle(color: _solCyan),
                               ),
                             ],
                           ),
@@ -249,7 +274,6 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
         children: <Widget>[
           FloatingActionButton(
             onPressed: () {
-              // 调用 resetProgram 并重新加载代码
               NativeCompilerBridge.resetProgram();
               _loadAssemblyCode();
             },
@@ -259,14 +283,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
           const SizedBox(width: 10),
           FloatingActionButton(
             onPressed: () {
-              NativeCompilerBridge.stepVm(); // 调用 stepVm
+              NativeCompilerBridge.stepVm();
               final int pc = NativeCompilerBridge.getVmPc();
               final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
               final bool zf = NativeCompilerBridge.getVmZeroFlag();
               final bool sf = NativeCompilerBridge.getVmSignFlag();
               final List<int> memory = NativeCompilerBridge.getVmAllMemory();
               setState(() {
-                _currentPc = pc; // 更新 PC 并刷新 UI
+                _currentPc = pc;
                 _registers = registers;
                 _zeroFlag = zf;
                 _signFlag = sf;
@@ -275,7 +299,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               _scrollToCurrentLine();
             },
             tooltip: 'Step',
-            child: const Icon(Icons.play_arrow), // 播放图标
+            child: const Icon(Icons.play_arrow),
           ),
         ],
       ),
