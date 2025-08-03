@@ -204,16 +204,16 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5, // 1 address + 4 values
+                  crossAxisCount: 9, // 1 address + 8 values
                   childAspectRatio: 2.5,
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
                 ),
-                itemCount: (_memory.length / 4).ceil() * 5,
+                itemCount: (_memory.length / 8).ceil() * 9,
                 itemBuilder: (context, index) {
-                  final itemType = index % 5;
-                  final rowIndex = index ~/ 5;
-                  final memIndex = rowIndex * 4;
+                  final itemType = index % 9;
+                  final rowIndex = index ~/ 9;
+                  final memIndex = rowIndex * 8;
 
                   if (itemType == 0) {
                     // Address
