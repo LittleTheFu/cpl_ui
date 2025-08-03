@@ -31,7 +31,7 @@ class NativeCompilerBridge {
     if (Platform.isWindows) {
       // 假设 DLL 放在 Flutter 项目根目录下的 'dll' 文件夹中
       return DynamicLibrary.open(
-        p.join(Directory.current.path, 'dll', 'ffi_api.dll'),
+        p.join(Directory.current.path, 'dll', 'cpl_ffi_lib.dll'),
       );
     } else if (Platform.isMacOS) {
       // 假设 .dylib 放在 Flutter 项目根目录下的 'dylib' 文件夹中
@@ -79,7 +79,7 @@ class NativeCompilerBridge {
       for (int i = 0; i < count; i++) {
         dartCodeLines.add(nativeStrings[i].cast<Utf8>().toDartString());
       }
-      
+
       return dartCodeLines;
     } finally {
       // 确保无论如何都释放 C++ 端分配的内存
