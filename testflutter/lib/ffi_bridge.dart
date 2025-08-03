@@ -61,6 +61,9 @@ extension IntArrayExtension on IntArray {
 typedef GetVmAllRegistersC = IntArray Function();
 typedef GetVmAllRegistersDart = IntArray Function();
 
+typedef GetVmAllMemoryC = IntArray Function();
+typedef GetVmAllMemoryDart = IntArray Function();
+
 // **修正：free_int_array_data 接收 Pointer<Int32> (int*)**
 typedef FreeIntArrayDataC = Void Function(Pointer<Int32> data);
 typedef FreeIntArrayDataDart = void Function(Pointer<Int32> data);
@@ -142,6 +145,9 @@ class NativeCompilerBridge {
         'get_vm_all_registers',
       );
 
+  static final _getVmAllMemory = _dylib
+      .lookupFunction<GetVmAllMemoryC, GetVmAllMemoryDart>('get_vm_all_memory');
+
   static final _getVmZeroFlag = _dylib
       .lookupFunction<GetVmZeroFlagC, GetVmZeroFlagDart>('get_vm_zero_flag');
 
@@ -201,6 +207,24 @@ class NativeCompilerBridge {
     } finally {
       // 确保释放由 C++ 分配的 IntArray.data 内存
       _freeIntArrayData(cRegisters.data);
+    }
+  }
+
+  static List<int> getVmAllMemory() {
+    // C++ 返回的是 IntArray **值**，Dart FFI 也会将其映射为 IntArray 值。
+    final IntArray cMemory = _getVmAllMemory();
+
+    if (cMemory.data == nullptr) {
+      return [];
+    }
+
+    try {
+      // 调用 IntArray 扩展方法，将 C 数据复制到 Dart List<int>
+      final List<int> memory = cMemory.toDartInts();
+      return memory;
+    } finally {
+      // 确保释放由 C++ 分配的 IntArray.data 内存
+      _freeIntArrayData(cMemory.data);
     }
   }
 

@@ -35,6 +35,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   List<int> _registers = []; // 用于存储寄存器值
   bool _zeroFlag = false;
   bool _signFlag = false;
+  List<int> _memory = []; // 用于存储内存内容
   final ScrollController _scrollController = ScrollController();
   static const double _itemHeight = 20.0; // 假设每个列表项的固定高度
 
@@ -81,12 +82,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
     final bool zf = NativeCompilerBridge.getVmZeroFlag();
     final bool sf = NativeCompilerBridge.getVmSignFlag();
+    final List<int> memory = NativeCompilerBridge.getVmAllMemory();
     setState(() {
       _assemblyCodeLines = code;
       _currentPc = pc;
       _registers = registers;
       _zeroFlag = zf;
       _signFlag = sf;
+      _memory = memory;
     });
     _scrollToCurrentLine();
   }
@@ -190,6 +193,49 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               ],
             ),
           ),
+          const Divider(),
+          // 内存显示区域
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5, // 1 address + 4 values
+                  childAspectRatio: 2.5,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemCount: (_memory.length / 4).ceil() * 5,
+                itemBuilder: (context, index) {
+                  final itemType = index % 5;
+                  final rowIndex = index ~/ 5;
+                  final memIndex = rowIndex * 4;
+
+                  if (itemType == 0) {
+                    // Address
+                    return Text(
+                      '0x${(memIndex).toRadixString(16).padLeft(8, '0')}:',
+                      style: TextStyle(color: Colors.grey[600]),
+                    );
+                  } else {
+                    final dataIndex = memIndex + (itemType - 1);
+                    if (dataIndex < _memory.length) {
+                      return Text(
+                        '0x${_memory[dataIndex].toRadixString(16).padLeft(8, '0')}',
+                        style: const TextStyle(color: Colors.cyanAccent),
+                      );
+                    } else {
+                      return const SizedBox.shrink(); // Empty space if no more data
+                    }
+                  }
+                },
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButton: Row(
@@ -212,11 +258,13 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
               final bool zf = NativeCompilerBridge.getVmZeroFlag();
               final bool sf = NativeCompilerBridge.getVmSignFlag();
+              final List<int> memory = NativeCompilerBridge.getVmAllMemory();
               setState(() {
                 _currentPc = pc; // 更新 PC 并刷新 UI
                 _registers = registers;
                 _zeroFlag = zf;
                 _signFlag = sf;
+                _memory = memory;
               });
               _scrollToCurrentLine();
             },
