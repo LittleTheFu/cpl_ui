@@ -100,98 +100,113 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
       body: Column(
         children: [
-          SizedBox(
-            height: 300, // 设置一个固定的高度
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              color: Colors.grey[900], // 背景色更深，突出代码
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: _assemblyCodeLines.length,
-                itemBuilder: (context, index) {
-                  final line = _assemblyCodeLines[index];
-                  // 分割行号和指令，假设格式为 "行号: 指令"
-                  final parts = line.split(': ');
-                  String lineNumber = parts.length > 1 ? parts[0] : '';
-                  String instruction = parts.length > 1 ? parts[1] : line;
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 300, // 设置一个固定的高度
+                width: 400,
+                child: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  color: Colors.grey[900], // 背景色更深，突出代码
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: _assemblyCodeLines.length,
+                    itemBuilder: (context, index) {
+                      final line = _assemblyCodeLines[index];
+                      // 分割行号和指令，假设格式为 "行号: 指令"
+                      final parts = line.split(': ');
+                      String lineNumber = parts.length > 1 ? parts[0] : '';
+                      String instruction = parts.length > 1 ? parts[1] : line;
 
-                  // 判断是否是当前 PC 行
-                  final bool isCurrentPc = index == _currentPc;
+                      // 判断是否是当前 PC 行
+                      final bool isCurrentPc = index == _currentPc;
 
-                  return Container(
-                    height: _itemHeight, // 为每个项目设置固定高度
-                    color: isCurrentPc
-                        ? Colors.blueAccent.withAlpha((255 * 0.3).round())
-                        : Colors.transparent, // 高亮当前行
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 行号部分
-                          SizedBox(
-                            width: 60, // 固定宽度，确保行号对齐
-                            child: Text(
-                              lineNumber,
-                              style: TextStyle(
-                                color: Colors.grey[600], // 行号颜色更浅
-                                fontFamily: 'monospace',
-                                fontSize: 14.0,
+                      return Container(
+                        height: _itemHeight, // 为每个项目设置固定高度
+                        color: isCurrentPc
+                            ? Colors.blueAccent.withAlpha((255 * 0.3).round())
+                            : Colors.transparent, // 高亮当前行
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 行号部分
+                              SizedBox(
+                                width: 60, // 固定宽度，确保行号对齐
+                                child: Text(
+                                  lineNumber,
+                                  style: TextStyle(
+                                    color: Colors.grey[600], // 行号颜色更浅
+                                    fontFamily: 'monospace',
+                                    fontSize: 14.0,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              // 汇编指令部分
+                              SizedBox(
+                                width: 300, // 设置一个固定的宽度
+                                child: Text(
+                                  instruction,
+                                  style: const TextStyle(
+                                    color: Colors.lightGreenAccent, // 汇编指令颜色
+                                    fontFamily: 'monospace',
+                                    fontSize: 14.0,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          // 汇编指令部分
-                          Expanded(
-                            child: Text(
-                              instruction,
-                              style: const TextStyle(
-                                color: Colors.lightGreenAccent, // 汇编指令颜色
-                                fontFamily: 'monospace',
-                                fontSize: 14.0,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // 寄存器显示区域
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8.0, // 水平间距
+                        runSpacing: 4.0, // 垂直间距
+                        children: [
+                          ...List<Widget>.generate(_registers.length, (index) {
+                            return Chip(
+                              label: Text(
+                                'R$index: ${_registers[index]}',
+                                style: const TextStyle(fontFamily: 'monospace'),
                               ),
+                            );
+                          }),
+                          Chip(
+                            label: Text(
+                              'ZF: ${_zeroFlag ? 1 : 0}',
+                              style: const TextStyle(fontFamily: 'monospace'),
                             ),
+                            backgroundColor: _zeroFlag ? Colors.green : Colors.red,
+                          ),
+                          Chip(
+                            label: Text(
+                              'SF: ${_signFlag ? 1 : 0}',
+                              style: const TextStyle(fontFamily: 'monospace'),
+                            ),
+                            backgroundColor: _signFlag ? Colors.green : Colors.red,
                           ),
                         ],
                       ),
-                    ),
-                  );
-                },
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          // 寄存器显示区域
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Wrap(
-              spacing: 8.0, // 水平间距
-              runSpacing: 4.0, // 垂直间距
-              children: [
-                ...List<Widget>.generate(_registers.length, (index) {
-                  return Chip(
-                    label: Text(
-                      'R$index: ${_registers[index]}',
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
-                  );
-                }),
-                Chip(
-                  label: Text(
-                    'ZF: ${_zeroFlag ? 1 : 0}',
-                    style: const TextStyle(fontFamily: 'monospace'),
-                  ),
-                  backgroundColor: _zeroFlag ? Colors.green : Colors.red,
-                ),
-                Chip(
-                  label: Text(
-                    'SF: ${_signFlag ? 1 : 0}',
-                    style: const TextStyle(fontFamily: 'monospace'),
-                  ),
-                  backgroundColor: _signFlag ? Colors.green : Colors.red,
-                ),
-              ],
-            ),
+            ],
           ),
           const Divider(),
           // 内存显示区域
