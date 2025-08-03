@@ -50,6 +50,12 @@ typedef FreeStringArrayDart = void Function(Pointer<StringArray> array);
 typedef GetVmPcC = IntPtr Function();
 typedef GetVmPcDart = int Function();
 
+typedef StepVmC = Void Function();
+typedef StepVmDart = void Function();
+
+typedef ResetVMProgramC = Void Function();
+typedef ResetVMProgramDart = void Function();
+
 /// A bridge to call native C++ functions for compiler operations.
 class NativeCompilerBridge {
   static final DynamicLibrary _dylib = _openDynamicLibrary();
@@ -95,6 +101,11 @@ class NativeCompilerBridge {
     'get_vm_pc',
   );
 
+  static final _resetProgram = _dylib
+      .lookupFunction<ResetVMProgramC, ResetVMProgramDart>('reset_vm_program');
+
+  static final _stepVm = _dylib.lookupFunction<StepVmC, StepVmDart>('step_vm');
+
   /// Calls the C++ function to retrieve the hardcoded VM instruction assembly code.
   ///
   /// It manages memory by automatically freeing the C++ allocated `StringArray`.
@@ -123,5 +134,15 @@ class NativeCompilerBridge {
   /// Returns the current PC as an integer.
   static int getVmPc() {
     return _getVmPc();
+  }
+
+  /// Calls the C++ function to step the VM by one instruction.
+  static void stepVm() {
+    _stepVm();
+  }
+
+  /// Calls the C++ function to reset the VM program.
+  static void resetProgram() {
+    _resetProgram();
   }
 }

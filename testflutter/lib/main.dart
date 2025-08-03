@@ -105,6 +105,31 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
           },
         ),
       ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          FloatingActionButton(
+            onPressed: () {
+              // 调用 resetProgram 并重新加载代码
+              NativeCompilerBridge.resetProgram();
+              _loadAssemblyCode();
+            },
+            tooltip: 'Reset Program',
+            child: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 10),
+          FloatingActionButton(
+            onPressed: () {
+              NativeCompilerBridge.stepVm(); // 调用 stepVm
+              setState(() {
+                _currentPc = NativeCompilerBridge.getVmPc(); // 更新 PC 并刷新 UI
+              });
+            },
+            tooltip: 'Step',
+            child: const Icon(Icons.play_arrow), // 播放图标
+          ),
+        ],
+      ),
     );
   }
 }
