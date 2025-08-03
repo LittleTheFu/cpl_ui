@@ -98,157 +98,148 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
-      body: Column(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 300, // 设置一个固定的高度
-                width: 400,
-                child: Container(
-                  padding: const EdgeInsets.all(8.0),
-                  color: Colors.grey[900], // 背景色更深，突出代码
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _assemblyCodeLines.length,
-                    itemBuilder: (context, index) {
-                      final line = _assemblyCodeLines[index];
-                      // 分割行号和指令，假设格式为 "行号: 指令"
-                      final parts = line.split(': ');
-                      String lineNumber = parts.length > 1 ? parts[0] : '';
-                      String instruction = parts.length > 1 ? parts[1] : line;
+          // Assembly Code View
+          SizedBox(
+            height: double.infinity,
+            width: 400,
+            child: Container(
+              padding: const EdgeInsets.all(8.0),
+              color: Colors.grey[900],
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _assemblyCodeLines.length,
+                itemBuilder: (context, index) {
+                  final line = _assemblyCodeLines[index];
+                  final parts = line.split(': ');
+                  String lineNumber = parts.length > 1 ? parts[0] : '';
+                  String instruction = parts.length > 1 ? parts[1] : line;
+                  final bool isCurrentPc = index == _currentPc;
 
-                      // 判断是否是当前 PC 行
-                      final bool isCurrentPc = index == _currentPc;
-
-                      return Container(
-                        height: _itemHeight, // 为每个项目设置固定高度
-                        color: isCurrentPc
-                            ? Colors.blueAccent.withAlpha((255 * 0.3).round())
-                            : Colors.transparent, // 高亮当前行
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 行号部分
-                              SizedBox(
-                                width: 60, // 固定宽度，确保行号对齐
-                                child: Text(
-                                  lineNumber,
-                                  style: TextStyle(
-                                    color: Colors.grey[600], // 行号颜色更浅
-                                    fontFamily: 'monospace',
-                                    fontSize: 14.0,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              // 汇编指令部分
-                              SizedBox(
-                                width: 300, // 设置一个固定的宽度
-                                child: Text(
-                                  instruction,
-                                  style: const TextStyle(
-                                    color: Colors.lightGreenAccent, // 汇编指令颜色
-                                    fontFamily: 'monospace',
-                                    fontSize: 14.0,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // 寄存器显示区域
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: [
-                      const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8.0, // 水平间距
-                        runSpacing: 4.0, // 垂直间距
+                  return Container(
+                    height: _itemHeight,
+                    color: isCurrentPc
+                        ? Colors.blueAccent.withAlpha((255 * 0.3).round())
+                        : Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ...List<Widget>.generate(_registers.length, (index) {
-                            return Chip(
-                              label: Text(
-                                'R$index: ${_registers[index]}',
-                                style: const TextStyle(fontFamily: 'monospace'),
+                          SizedBox(
+                            width: 60,
+                            child: Text(
+                              lineNumber,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontFamily: 'monospace',
+                                fontSize: 14.0,
                               ),
-                            );
-                          }),
-                          Chip(
-                            label: Text(
-                              'ZF: ${_zeroFlag ? 1 : 0}',
-                              style: const TextStyle(fontFamily: 'monospace'),
                             ),
-                            backgroundColor: _zeroFlag ? Colors.green : Colors.red,
                           ),
-                          Chip(
-                            label: Text(
-                              'SF: ${_signFlag ? 1 : 0}',
-                              style: const TextStyle(fontFamily: 'monospace'),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 300,
+                            child: Text(
+                              instruction,
+                              style: const TextStyle(
+                                color: Colors.lightGreenAccent,
+                                fontFamily: 'monospace',
+                                fontSize: 14.0,
+                              ),
                             ),
-                            backgroundColor: _signFlag ? Colors.green : Colors.red,
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Divider(),
-          // 内存显示区域
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 9, // 1 address + 8 values
-                  childAspectRatio: 2.5,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: (_memory.length / 8).ceil() * 9,
-                itemBuilder: (context, index) {
-                  final itemType = index % 9;
-                  final rowIndex = index ~/ 9;
-                  final memIndex = rowIndex * 8;
-
-                  if (itemType == 0) {
-                    // Address
-                    return Text(
-                      '0x${(memIndex).toRadixString(16).padLeft(8, '0')}:',
-                      style: TextStyle(color: Colors.grey[600]),
-                    );
-                  } else {
-                    final dataIndex = memIndex + (itemType - 1);
-                    if (dataIndex < _memory.length) {
-                      return Text(
-                        '0x${_memory[dataIndex].toRadixString(16).padLeft(8, '0')}',
-                        style: const TextStyle(color: Colors.cyanAccent),
-                      );
-                    } else {
-                      return const SizedBox.shrink(); // Empty space if no more data
-                    }
-                  }
+                    ),
+                  );
                 },
               ),
+            ),
+          ),
+          const VerticalDivider(),
+          // Register View
+          SizedBox(
+            height: double.infinity,
+            width: 200,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  children: [
+                    const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 4.0,
+                      children: [
+                        ...List<Widget>.generate(_registers.length, (index) {
+                          return Chip(
+                            label: Text(
+                              'R$index: ${_registers[index]}',
+                              style: const TextStyle(fontFamily: 'monospace'),
+                            ),
+                          );
+                        }),
+                        Chip(
+                          label: Text(
+                            'ZF: ${_zeroFlag ? 1 : 0}',
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                          backgroundColor: _zeroFlag ? Colors.green : Colors.red,
+                        ),
+                        Chip(
+                          label: Text(
+                            'SF: ${_signFlag ? 1 : 0}',
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                          backgroundColor: _signFlag ? Colors.green : Colors.red,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const VerticalDivider(),
+          // Memory View
+          Expanded(
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: ListView.builder(
+                      itemCount: _memory.length,
+                      itemBuilder: (context, index) {
+                        return SizedBox(
+                          height: _itemHeight,
+                          child: Row(
+                            children: [
+                              Text(
+                                '0x${(index).toRadixString(16).padLeft(8, '0')}:',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '0x${_memory[index].toRadixString(16).padLeft(8, '0')}',
+                                style: const TextStyle(color: Colors.cyanAccent),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
