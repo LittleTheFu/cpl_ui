@@ -118,4 +118,10 @@ class NativeCompilerBridge {
       _freeStringArray(nativeArrayPtr);
     }
   }
+
+  /// Calls the C++ function to retrieve the current VM program counter (PC).
+  /// Returns the current PC as an integer.
+  static int getVmPc() {
+    return _getVmPc();
+  }
 }

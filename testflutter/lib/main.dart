@@ -31,6 +31,7 @@ class AssemblyCodeView extends StatefulWidget {
 
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   List<String> _assemblyCodeLines = []; // 初始化为空列表
+  int _currentPc = -1; // 当前 VM PC，初始化为 -1
 
   @override
   void initState() {
@@ -40,8 +41,10 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
 
   Future<void> _loadAssemblyCode() async {
     final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
+    final int pc = NativeCompilerBridge.getVmPc(); // 获取当前 PC
     setState(() {
       _assemblyCodeLines = code;
+      _currentPc = pc; // 更新当前 PC
     });
   }
 
@@ -61,36 +64,42 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             String lineNumber = parts.length > 1 ? parts[0] : '';
             String instruction = parts.length > 1 ? parts[1] : line;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 行号部分
-                  SizedBox(
-                    width: 60, // 固定宽度，确保行号对齐
-                    child: Text(
-                      lineNumber,
-                      style: TextStyle(
-                        color: Colors.grey[600], // 行号颜色更浅
-                        fontFamily: 'monospace',
-                        fontSize: 14.0,
+            // 判断是否是当前 PC 行
+            final bool isCurrentPc = index == _currentPc;
+
+            return Container(
+              color: isCurrentPc ? Colors.blueAccent.withOpacity(0.3) : Colors.transparent, // 高亮当前行
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 行号部分
+                    SizedBox(
+                      width: 60, // 固定宽度，确保行号对齐
+                      child: Text(
+                        lineNumber,
+                        style: TextStyle(
+                          color: Colors.grey[600], // 行号颜色更浅
+                          fontFamily: 'monospace',
+                          fontSize: 14.0,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  // 汇编指令部分
-                  Expanded(
-                    child: Text(
-                      instruction,
-                      style: const TextStyle(
-                        color: Colors.lightGreenAccent, // 汇编指令颜色
-                        fontFamily: 'monospace',
-                        fontSize: 14.0,
+                    const SizedBox(width: 10),
+                    // 汇编指令部分
+                    Expanded(
+                      child: Text(
+                        instruction,
+                        style: const TextStyle(
+                          color: Colors.lightGreenAccent, // 汇编指令颜色
+                          fontFamily: 'monospace',
+                          fontSize: 14.0,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
