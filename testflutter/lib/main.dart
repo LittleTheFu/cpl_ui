@@ -52,10 +52,12 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
-      body: Container(
-        padding: const EdgeInsets.all(8.0),
-        color: Colors.grey[900], // 背景色更深，突出代码
-        child: ListView.builder(
+      body: SizedBox(
+        height: 300, // 设置一个固定的高度
+        child: Container(
+          padding: const EdgeInsets.all(8.0),
+          color: Colors.grey[900], // 背景色更深，突出代码
+          child: ListView.builder(
           itemCount: _assemblyCodeLines.length,
           itemBuilder: (context, index) {
             final line = _assemblyCodeLines[index];
@@ -104,7 +106,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             );
           },
         ),
-      ),
+      ),),
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
