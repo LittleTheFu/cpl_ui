@@ -81,6 +81,12 @@ typedef StepVmDart = void Function();
 typedef ResetVMProgramC = Void Function();
 typedef ResetVMProgramDart = void Function();
 
+typedef GetVmZeroFlagC = Bool Function();
+typedef GetVmZeroFlagDart = bool Function();
+
+typedef GetVmSignFlagC = Bool Function();
+typedef GetVmSignFlagDart = bool Function();
+
 /// A bridge to call native C++ functions for compiler operations.
 class NativeCompilerBridge {
   static final DynamicLibrary _dylib = _openDynamicLibrary();
@@ -136,6 +142,12 @@ class NativeCompilerBridge {
         'get_vm_all_registers',
       );
 
+  static final _getVmZeroFlag = _dylib
+      .lookupFunction<GetVmZeroFlagC, GetVmZeroFlagDart>('get_vm_zero_flag');
+
+  static final _getVmSignFlag = _dylib
+      .lookupFunction<GetVmSignFlagC, GetVmSignFlagDart>('get_vm_sign_flag');
+
   /// Calls the C++ function to retrieve the hardcoded VM instruction assembly code.
   ///
   /// It manages memory by automatically freeing the C++ allocated `StringArray`.
@@ -143,9 +155,6 @@ class NativeCompilerBridge {
     final Pointer<StringArray> nativeArrayPtr = _getHardcodedVmInstructions();
 
     if (nativeArrayPtr == nullptr) {
-      print(
-        "[Dart] C++ returned a null StringArray pointer for hardcoded instructions.",
-      );
       return [];
     }
 
@@ -182,9 +191,9 @@ class NativeCompilerBridge {
     // 在 Dart 中，IntArray 是值类型，不能直接检查其是否为 nullptr。
     // 应该检查其内部的 data 指针是否为 nullptr。
     if (cRegisters.data == nullptr) {
-      print(
-        "[Dart] C++ returned an IntArray with a null data pointer for registers.",
-      );
+      // print(
+      //   "[Dart] C++ returned an IntArray with a null data pointer for registers.",
+      // );
       return [];
     }
 
@@ -196,5 +205,13 @@ class NativeCompilerBridge {
       // 确保释放由 C++ 分配的 IntArray.data 内存
       _freeIntArrayData(cRegisters.data);
     }
+  }
+
+  static bool getVmZeroFlag() {
+    return _getVmZeroFlag();
+  }
+
+  static bool getVmSignFlag() {
+    return _getVmSignFlag();
   }
 }

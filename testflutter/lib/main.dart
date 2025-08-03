@@ -112,7 +112,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                   return Container(
                     height: _itemHeight, // 为每个项目设置固定高度
                     color: isCurrentPc
-                        ? Colors.blueAccent.withOpacity(0.3)
+                        ? Colors.blueAccent.withAlpha((255 * 0.3).round())
                         : Colors.transparent, // 高亮当前行
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2.0),
