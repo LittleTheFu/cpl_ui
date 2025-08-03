@@ -39,7 +39,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   }
 
   Future<void> _loadAssemblyCode() async {
-    final List<String> code = NativeCompilerBridge.getAssemblyCode();
+    final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
     setState(() {
       _assemblyCodeLines = code;
     });
@@ -99,4 +99,3 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     );
   }
 }
-

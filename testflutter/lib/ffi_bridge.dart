@@ -1,14 +1,15 @@
 import 'dart:ffi';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:ffi/ffi.dart'; // Add this import
+import 'package:ffi/ffi.dart'; // Make sure this is imported for Utf8 and other ffi utilities
 
-// 定义 Dart 中的 StringArray 结构体，必须精确匹配 C++ 中的定义
+// Define Dart 中的 StringArray 结构体，必须精确匹配 C++ 中的定义
 // C++ struct:
 // struct StringArray {
 //   char** strings;
 //   size_t count;
 // };
+// Using @IntSize() is correct for size_t on all platforms
 final class StringArray extends Struct {
   external Pointer<Pointer<Char>> strings;
 
@@ -16,73 +17,104 @@ final class StringArray extends Struct {
   external int count;
 }
 
-// 定义 C++ 函数的签名
-typedef GetAssemblyCodeForUiC = Pointer<StringArray> Function();
-typedef GetAssemblyCodeForUiDart = Pointer<StringArray> Function();
+// Extension to easily convert the C StringArray pointer to a Dart List<String>
+extension StringArrayPointer on Pointer<StringArray> {
+  List<String> toDartStrings() {
+    final List<String> result = [];
+    if (this == nullptr || ref.strings == nullptr) {
+      return result; // Handle null pointers gracefully
+    }
+    for (int i = 0; i < ref.count; i++) {
+      // Ensure the inner pointer is also not null before converting
+      final Pointer<Char> charPtr = ref.strings[i];
+      if (charPtr != nullptr) {
+        result.add(charPtr.cast<Utf8>().toDartString());
+      } else {
+        result.add(''); // Add an empty string for null C strings
+      }
+    }
+    return result;
+  }
+}
 
-// 定义 C++ 释放函数签名
+// --- FFI Function Type Definitions ---
+
+// Define C++ function signature for getting hardcoded VM instructions
+typedef GetHardcodedVmInstructionsC = Pointer<StringArray> Function();
+typedef GetHardcodedVmInstructionsDart = Pointer<StringArray> Function();
+
+// Define C++ free function signature (for memory management)
 typedef FreeStringArrayC = Void Function(Pointer<StringArray> array);
 typedef FreeStringArrayDart = void Function(Pointer<StringArray> array);
 
+typedef GetVmPcC = IntPtr Function();
+typedef GetVmPcDart = int Function();
+
+/// A bridge to call native C++ functions for compiler operations.
 class NativeCompilerBridge {
   static final DynamicLibrary _dylib = _openDynamicLibrary();
 
+  // Helper to open the correct dynamic library based on platform
   static DynamicLibrary _openDynamicLibrary() {
     if (Platform.isWindows) {
-      // 假设 DLL 放在 Flutter 项目根目录下的 'dll' 文件夹中
+      // In our CMake setup, DLLs go into `dll` folder relative to project root.
+      // And the DLL name is `cpl_ffi_lib.dll`.
       return DynamicLibrary.open(
         p.join(Directory.current.path, 'dll', 'cpl_ffi_lib.dll'),
       );
     } else if (Platform.isMacOS) {
-      // 假设 .dylib 放在 Flutter 项目根目录下的 'dylib' 文件夹中
+      // For macOS, the shared library name is typically `libcpl_ffi_lib.dylib`.
       return DynamicLibrary.open(
-        p.join(Directory.current.path, 'dylib', 'libffi_api.dylib'),
+        p.join(Directory.current.path, 'lib', 'libcpl_ffi_lib.dylib'),
       );
     } else if (Platform.isLinux) {
-      // 假设 .so 放在 Flutter 项目根目录下的 'so' 文件夹中
+      // For Linux, the shared library name is typically `libcpl_ffi_lib.so`.
       return DynamicLibrary.open(
-        p.join(Directory.current.path, 'so', 'libffi_api.so'),
+        p.join(Directory.current.path, 'lib', 'libcpl_ffi_lib.so'),
       );
     } else {
       throw UnsupportedError('Unsupported platform');
     }
   }
 
-  // 获取 C++ 函数的 Dart 绑定
-  static final _getAssemblyCodeForUi = _dylib
-      .lookupFunction<GetAssemblyCodeForUiC, GetAssemblyCodeForUiDart>(
-        'get_assembly_code_for_ui',
-      );
+  // Lookup the C++ functions and bind them to Dart functions
+  static final _getHardcodedVmInstructions = _dylib
+      .lookupFunction<
+        GetHardcodedVmInstructionsC,
+        GetHardcodedVmInstructionsDart
+      >(
+        'get_hardcoded_vm_instructions',
+      ); // Ensure this matches your C++ EXPORT_API function name
 
   static final _freeStringArray = _dylib
       .lookupFunction<FreeStringArrayC, FreeStringArrayDart>(
         'free_string_array',
       );
 
-  /// 调用 C++ 函数获取汇编代码列表
-  static List<String> getAssemblyCode() {
-    final Pointer<StringArray> nativeArrayPtr = _getAssemblyCodeForUi();
+  static final _getVmPc = _dylib.lookupFunction<GetVmPcC, GetVmPcDart>(
+    'get_vm_pc',
+  );
 
-    // 检查返回的指针是否有效
+  /// Calls the C++ function to retrieve the hardcoded VM instruction assembly code.
+  ///
+  /// It manages memory by automatically freeing the C++ allocated `StringArray`.
+  static List<String> getHardcodedVmAssemblyCode() {
+    final Pointer<StringArray> nativeArrayPtr = _getHardcodedVmInstructions();
+
+    // Guard against null pointer returned from C++
     if (nativeArrayPtr == nullptr) {
-      print("[Dart] C++ returned a null StringArray pointer.");
+      print(
+        "[Dart] C++ returned a null StringArray pointer for hardcoded instructions.",
+      );
       return [];
     }
 
     try {
-      // 从 StringArray 结构体中读取 count 和 strings 数组
-      final int count = nativeArrayPtr.ref.count;
-      final Pointer<Pointer<Char>> nativeStrings = nativeArrayPtr.ref.strings;
-
-      // 将每个 Utf8 指针转换为 Dart String
-      final List<String> dartCodeLines = [];
-      for (int i = 0; i < count; i++) {
-        dartCodeLines.add(nativeStrings[i].cast<Utf8>().toDartString());
-      }
-
+      // Convert the C StringArray pointer to a Dart List<String>
+      final List<String> dartCodeLines = nativeArrayPtr.toDartStrings();
       return dartCodeLines;
     } finally {
-      // 确保无论如何都释放 C++ 端分配的内存
+      // Ensure the C++ allocated memory is always freed
       _freeStringArray(nativeArrayPtr);
     }
   }
