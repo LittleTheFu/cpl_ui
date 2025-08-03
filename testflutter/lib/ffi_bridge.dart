@@ -191,9 +191,6 @@ class NativeCompilerBridge {
     // 在 Dart 中，IntArray 是值类型，不能直接检查其是否为 nullptr。
     // 应该检查其内部的 data 指针是否为 nullptr。
     if (cRegisters.data == nullptr) {
-      // print(
-      //   "[Dart] C++ returned an IntArray with a null data pointer for registers.",
-      // );
       return [];
     }
 

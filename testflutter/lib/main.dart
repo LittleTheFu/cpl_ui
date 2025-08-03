@@ -33,6 +33,8 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   List<String> _assemblyCodeLines = [];
   int _currentPc = -1;
   List<int> _registers = []; // 用于存储寄存器值
+  bool _zeroFlag = false;
+  bool _signFlag = false;
   final ScrollController _scrollController = ScrollController();
   static const double _itemHeight = 20.0; // 假设每个列表项的固定高度
 
@@ -77,10 +79,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
     final int pc = NativeCompilerBridge.getVmPc();
     final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
+    final bool zf = NativeCompilerBridge.getVmZeroFlag();
+    final bool sf = NativeCompilerBridge.getVmSignFlag();
     setState(() {
       _assemblyCodeLines = code;
       _currentPc = pc;
       _registers = registers;
+      _zeroFlag = zf;
+      _signFlag = sf;
     });
     _scrollToCurrentLine();
   }
@@ -158,14 +164,30 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             child: Wrap(
               spacing: 8.0, // 水平间距
               runSpacing: 4.0, // 垂直间距
-              children: List<Widget>.generate(_registers.length, (index) {
-                return Chip(
+              children: [
+                ...List<Widget>.generate(_registers.length, (index) {
+                  return Chip(
+                    label: Text(
+                      'R$index: ${_registers[index]}',
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                  );
+                }),
+                Chip(
                   label: Text(
-                    'R$index: ${_registers[index]}',
+                    'ZF: ${_zeroFlag ? 1 : 0}',
                     style: const TextStyle(fontFamily: 'monospace'),
                   ),
-                );
-              }),
+                  backgroundColor: _zeroFlag ? Colors.green : Colors.red,
+                ),
+                Chip(
+                  label: Text(
+                    'SF: ${_signFlag ? 1 : 0}',
+                    style: const TextStyle(fontFamily: 'monospace'),
+                  ),
+                  backgroundColor: _signFlag ? Colors.green : Colors.red,
+                ),
+              ],
             ),
           ),
         ],
@@ -188,9 +210,13 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               NativeCompilerBridge.stepVm(); // 调用 stepVm
               final int pc = NativeCompilerBridge.getVmPc();
               final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
+              final bool zf = NativeCompilerBridge.getVmZeroFlag();
+              final bool sf = NativeCompilerBridge.getVmSignFlag();
               setState(() {
                 _currentPc = pc; // 更新 PC 并刷新 UI
                 _registers = registers;
+                _zeroFlag = zf;
+                _signFlag = sf;
               });
               _scrollToCurrentLine();
             },
