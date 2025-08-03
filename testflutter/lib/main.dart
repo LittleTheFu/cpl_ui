@@ -32,6 +32,7 @@ class AssemblyCodeView extends StatefulWidget {
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   List<String> _assemblyCodeLines = [];
   int _currentPc = -1;
+  List<int> _registers = []; // 用于存储寄存器值
   final ScrollController _scrollController = ScrollController();
   static const double _itemHeight = 20.0; // 假设每个列表项的固定高度
 
@@ -75,9 +76,11 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   Future<void> _loadAssemblyCode() async {
     final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
     final int pc = NativeCompilerBridge.getVmPc();
+    final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
     setState(() {
       _assemblyCodeLines = code;
       _currentPc = pc;
+      _registers = registers;
     });
     _scrollToCurrentLine();
   }
@@ -86,63 +89,87 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
-      body: SizedBox(
-        height: 300, // 设置一个固定的高度
-        child: Container(
-          padding: const EdgeInsets.all(8.0),
-          color: Colors.grey[900], // 背景色更深，突出代码
-          child: ListView.builder(
-          controller: _scrollController,
-          itemCount: _assemblyCodeLines.length,
-          itemBuilder: (context, index) {
-            final line = _assemblyCodeLines[index];
-            // 分割行号和指令，假设格式为 "行号: 指令"
-            final parts = line.split(': ');
-            String lineNumber = parts.length > 1 ? parts[0] : '';
-            String instruction = parts.length > 1 ? parts[1] : line;
+      body: Column(
+        children: [
+          SizedBox(
+            height: 300, // 设置一个固定的高度
+            child: Container(
+              padding: const EdgeInsets.all(8.0),
+              color: Colors.grey[900], // 背景色更深，突出代码
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _assemblyCodeLines.length,
+                itemBuilder: (context, index) {
+                  final line = _assemblyCodeLines[index];
+                  // 分割行号和指令，假设格式为 "行号: 指令"
+                  final parts = line.split(': ');
+                  String lineNumber = parts.length > 1 ? parts[0] : '';
+                  String instruction = parts.length > 1 ? parts[1] : line;
 
-            // 判断是否是当前 PC 行
-            final bool isCurrentPc = index == _currentPc;
+                  // 判断是否是当前 PC 行
+                  final bool isCurrentPc = index == _currentPc;
 
-            return Container(
-              height: _itemHeight, // 为每个项目设置固定高度
-              color: isCurrentPc ? Colors.blueAccent.withOpacity(0.3) : Colors.transparent, // 高亮当前行
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 行号部分
-                    SizedBox(
-                      width: 60, // 固定宽度，确保行号对齐
-                      child: Text(
-                        lineNumber,
-                        style: TextStyle(
-                          color: Colors.grey[600], // 行号颜色更浅
-                          fontFamily: 'monospace',
-                          fontSize: 14.0,
-                        ),
+                  return Container(
+                    height: _itemHeight, // 为每个项目设置固定高度
+                    color: isCurrentPc
+                        ? Colors.blueAccent.withOpacity(0.3)
+                        : Colors.transparent, // 高亮当前行
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 行号部分
+                          SizedBox(
+                            width: 60, // 固定宽度，确保行号对齐
+                            child: Text(
+                              lineNumber,
+                              style: TextStyle(
+                                color: Colors.grey[600], // 行号颜色更浅
+                                fontFamily: 'monospace',
+                                fontSize: 14.0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // 汇编指令部分
+                          Expanded(
+                            child: Text(
+                              instruction,
+                              style: const TextStyle(
+                                color: Colors.lightGreenAccent, // 汇编指令颜色
+                                fontFamily: 'monospace',
+                                fontSize: 14.0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    // 汇编指令部分
-                    Expanded(
-                      child: Text(
-                        instruction,
-                        style: const TextStyle(
-                          color: Colors.lightGreenAccent, // 汇编指令颜色
-                          fontFamily: 'monospace',
-                          fontSize: 14.0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
-        ),
-      ),),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // 寄存器显示区域
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Wrap(
+              spacing: 8.0, // 水平间距
+              runSpacing: 4.0, // 垂直间距
+              children: List<Widget>.generate(_registers.length, (index) {
+                return Chip(
+                  label: Text(
+                    'R$index: ${_registers[index]}',
+                    style: const TextStyle(fontFamily: 'monospace'),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
@@ -159,8 +186,11 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
           FloatingActionButton(
             onPressed: () {
               NativeCompilerBridge.stepVm(); // 调用 stepVm
+              final int pc = NativeCompilerBridge.getVmPc();
+              final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
               setState(() {
-                _currentPc = NativeCompilerBridge.getVmPc(); // 更新 PC 并刷新 UI
+                _currentPc = pc; // 更新 PC 并刷新 UI
+                _registers = registers;
               });
               _scrollToCurrentLine();
             },
