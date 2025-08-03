@@ -30,8 +30,10 @@ class AssemblyCodeView extends StatefulWidget {
 }
 
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
-  List<String> _assemblyCodeLines = []; // 初始化为空列表
-  int _currentPc = -1; // 当前 VM PC，初始化为 -1
+  List<String> _assemblyCodeLines = [];
+  int _currentPc = -1;
+  final ScrollController _scrollController = ScrollController();
+  static const double _itemHeight = 20.0; // 假设每个列表项的固定高度
 
   @override
   void initState() {
@@ -39,13 +41,45 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     _loadAssemblyCode();
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrentLine() {
+    // 确保UI构建完成后再滚动
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _currentPc >= 0) {
+        final viewportHeight = 300.0; // 视图高度
+        final itemPosition = _currentPc * _itemHeight;
+        var offset = itemPosition - (viewportHeight / 2) + (_itemHeight / 2);
+
+        // 限制偏移量，防止超出滚动范围
+        if (offset < 0) {
+          offset = 0;
+        }
+        if (offset > _scrollController.position.maxScrollExtent) {
+          offset = _scrollController.position.maxScrollExtent;
+        }
+
+        _scrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
   Future<void> _loadAssemblyCode() async {
     final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
-    final int pc = NativeCompilerBridge.getVmPc(); // 获取当前 PC
+    final int pc = NativeCompilerBridge.getVmPc();
     setState(() {
       _assemblyCodeLines = code;
-      _currentPc = pc; // 更新当前 PC
+      _currentPc = pc;
     });
+    _scrollToCurrentLine();
   }
 
   @override
@@ -58,6 +92,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
           padding: const EdgeInsets.all(8.0),
           color: Colors.grey[900], // 背景色更深，突出代码
           child: ListView.builder(
+          controller: _scrollController,
           itemCount: _assemblyCodeLines.length,
           itemBuilder: (context, index) {
             final line = _assemblyCodeLines[index];
@@ -70,6 +105,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             final bool isCurrentPc = index == _currentPc;
 
             return Container(
+              height: _itemHeight, // 为每个项目设置固定高度
               color: isCurrentPc ? Colors.blueAccent.withOpacity(0.3) : Colors.transparent, // 高亮当前行
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -126,6 +162,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               setState(() {
                 _currentPc = NativeCompilerBridge.getVmPc(); // 更新 PC 并刷新 UI
               });
+              _scrollToCurrentLine();
             },
             tooltip: 'Step',
             child: const Icon(Icons.play_arrow), // 播放图标
