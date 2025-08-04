@@ -75,7 +75,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   bool _signFlag = false;
   List<int> _memory = []; // 用于存储内存内容
   final ScrollController _scrollController = ScrollController();
-  static const double _itemHeight = 20.0; // 假设每个列表项的固定高度
+  static const double _itemHeight = 24.0; // 假设每个列表项的固定高度
 
   @override
   void initState() {
