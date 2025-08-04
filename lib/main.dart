@@ -166,19 +166,40 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _sourceCodeController,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: '在此输入源代码...',
-                border: OutlineInputBorder(),
-                fillColor: _solBase02,
-                filled: true,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _sourceCodeController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: '在此输入源代码...',
+                      border: OutlineInputBorder(),
+                      fillColor: _solBase02,
+                      filled: true,
+                    ),
+                    style: TextStyle(color: _solBase0, fontFamily: 'monospace'),
+                  ),
+                ),
               ),
-              style: TextStyle(color: _solBase0, fontFamily: 'monospace'),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: _errorMessage.isNotEmpty
+                      ? Text(
+                          _errorMessage,
+                          style: const TextStyle(color: _solRed, fontSize: 16),
+                        )
+                      : const SizedBox.shrink(), // Hide if no error
+                ),
+              ),
+            ],
           ),
           ElevatedButton(
             onPressed: _uploadSourceCode,
@@ -189,14 +210,6 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             ),
           ),
           const SizedBox(height: 10),
-          if (_errorMessage.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                _errorMessage,
-                style: const TextStyle(color: _solRed, fontSize: 16),
-              ),
-            ),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
