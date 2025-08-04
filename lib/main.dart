@@ -67,7 +67,7 @@ class AssemblyCodeView extends StatefulWidget {
 }
 
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
-  final TextEditingController _sourceCodeController = TextEditingController();
+  final TextEditingController _sourceCodeController = TextEditingController(text: "1+2*3");
   List<String> _assemblyCodeLines = ["请在上方输入源代码并点击 \"编译并上传源代码\" 按钮"];
   int _currentPc = -1;
   List<int> _registers = []; // 用于存储寄存器值
