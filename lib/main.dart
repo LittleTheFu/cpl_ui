@@ -1,3 +1,4 @@
+import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:testflutter/ffi_bridge.dart'; // 导入 ffi_bridge.dart
 
@@ -5,11 +6,11 @@ import 'package:testflutter/ffi_bridge.dart'; // 导入 ffi_bridge.dart
 const Color _solBase03 = Color(0xFF002b36); // Background
 const Color _solBase02 = Color(0xFF073642); // Highlight Background
 const Color _solBase01 = Color(0xFF586e75); // Comments/Muted Text
-const Color _solBase0 = Color(0xFF839496);  // Body Text
-const Color _solGreen = Color(0xFF859900);  // Green (Instructions, True Flag)
-const Color _solCyan = Color(0xFF2aa198);   // Cyan (Memory, Register Values)
-const Color _solRed = Color(0xFFdc322f);     // Red (False Flag)
-const Color _solBlue = Color(0xFF268bd2);    // Blue (AppBar, Highlight)
+const Color _solBase0 = Color(0xFF839496); // Body Text
+const Color _solGreen = Color(0xFF859900); // Green (Instructions, True Flag)
+const Color _solCyan = Color(0xFF2aa198); // Cyan (Memory, Register Values)
+const Color _solRed = Color(0xFFdc322f); // Red (False Flag)
+const Color _solBlue = Color(0xFF268bd2); // Blue (AppBar, Highlight)
 
 void main() {
   runApp(const MyApp());
@@ -38,8 +39,14 @@ class MyApp extends StatelessWidget {
         ),
         chipTheme: ChipThemeData(
           backgroundColor: _solBase02,
-          labelStyle: const TextStyle(color: _solBase0, fontFamily: 'monospace'),
-          secondaryLabelStyle: const TextStyle(color: _solBase0, fontFamily: 'monospace'),
+          labelStyle: const TextStyle(
+            color: _solBase0,
+            fontFamily: 'monospace',
+          ),
+          secondaryLabelStyle: const TextStyle(
+            color: _solBase0,
+            fontFamily: 'monospace',
+          ),
           selectedColor: _solBlue,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -106,6 +113,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
 
   Future<void> _loadAssemblyCode() async {
     final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
+    // final List<String> code = NativeCompilerBridge.uploadSourceCode("1+3*5");
     final int pc = NativeCompilerBridge.getVmPc();
     final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
     final bool zf = NativeCompilerBridge.getVmZeroFlag();
@@ -195,7 +203,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text("Registers", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _solBase0)),
+                    const Text(
+                      "Registers",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _solBase0,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8.0,
@@ -203,9 +218,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                       children: [
                         ...List<Widget>.generate(_registers.length, (index) {
                           return Chip(
-                            label: Text(
-                              'R$index: ${_registers[index]}',
-                            ),
+                            label: Text('R$index: ${_registers[index]}'),
                           );
                         }),
                         Chip(
@@ -236,7 +249,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
               children: [
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text("Memory View", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _solBase0)),
+                  child: Text(
+                    "Memory View",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _solBase0,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: Padding(
@@ -285,7 +305,8 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             onPressed: () {
               NativeCompilerBridge.stepVm();
               final int pc = NativeCompilerBridge.getVmPc();
-              final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
+              final List<int> registers =
+                  NativeCompilerBridge.getVmAllRegisters();
               final bool zf = NativeCompilerBridge.getVmZeroFlag();
               final bool sf = NativeCompilerBridge.getVmSignFlag();
               final List<int> memory = NativeCompilerBridge.getVmAllMemory();

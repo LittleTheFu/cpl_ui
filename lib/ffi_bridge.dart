@@ -90,6 +90,9 @@ typedef GetVmZeroFlagDart = bool Function();
 typedef GetVmSignFlagC = Bool Function();
 typedef GetVmSignFlagDart = bool Function();
 
+typedef LoadProgramC = Pointer<StringArray> Function(Pointer<Char>);
+typedef LoadProgramDart = Pointer<StringArray> Function(Pointer<Char>);
+
 /// A bridge to call native C++ functions for compiler operations.
 class NativeCompilerBridge {
   static final DynamicLibrary _dylib = _openDynamicLibrary();
@@ -154,12 +157,32 @@ class NativeCompilerBridge {
   static final _getVmSignFlag = _dylib
       .lookupFunction<GetVmSignFlagC, GetVmSignFlagDart>('get_vm_sign_flag');
 
+  static final _loadProgram = _dylib
+      .lookupFunction<LoadProgramC, LoadProgramDart>('load_program');
+
   /// Calls the C++ function to retrieve the hardcoded VM instruction assembly code.
   ///
   /// It manages memory by automatically freeing the C++ allocated `StringArray`.
   static List<String> getHardcodedVmAssemblyCode() {
     final Pointer<StringArray> nativeArrayPtr = _getHardcodedVmInstructions();
 
+    if (nativeArrayPtr == nullptr) {
+      return [];
+    }
+
+    try {
+      final List<String> dartCodeLines = nativeArrayPtr.toDartStrings();
+      return dartCodeLines;
+    } finally {
+      // Ensure the C++ allocated memory is always freed
+      _freeStringArray(nativeArrayPtr);
+    }
+  }
+
+  static List<String> uploadSourceCode(String src) {
+    final Pointer<StringArray> nativeArrayPtr = _loadProgram(
+      src.toNativeUtf8().cast<Char>(),
+    );
     if (nativeArrayPtr == nullptr) {
       return [];
     }
