@@ -69,6 +69,7 @@ class AssemblyCodeView extends StatefulWidget {
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   final TextEditingController _sourceCodeController = TextEditingController(text: "1+2*3");
   List<String> _assemblyCodeLines = ["请在上方输入源代码并点击 \"编译并上传源代码\" 按钮"];
+  String _errorMessage = ""; // New state variable for error messages
   int _currentPc = -1;
   List<int> _registers = []; // 用于存储寄存器值
   bool _zeroFlag = false;
@@ -136,6 +137,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     if (sourceCode.isEmpty) {
       setState(() {
         _assemblyCodeLines = ["请输入源代码"];
+        _errorMessage = ""; // Clear error message if source code is empty
       });
       return;
     }
@@ -146,17 +148,20 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
       );
       setState(() {
         _assemblyCodeLines = compiledCode;
+        _errorMessage = ""; // Clear error message on success
       });
       _loadAssemblyCode(); // Update other VM states
     } catch (e) {
       setState(() {
-        _assemblyCodeLines = ["编译错误: $e"];
+        _assemblyCodeLines = []; // Clear assembly code on error
+        _errorMessage = "编译错误: $e"; // Set error message
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
       body: Column(
@@ -184,6 +189,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
             ),
           ),
           const SizedBox(height: 10),
+          if (_errorMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _errorMessage,
+                style: const TextStyle(color: _solRed, fontSize: 16),
+              ),
+            ),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
