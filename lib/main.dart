@@ -1,4 +1,3 @@
-import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:testflutter/ffi_bridge.dart'; // 导入 ffi_bridge.dart
 
@@ -206,7 +205,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                           )
                         : Text(
                             "错误信息将显示在此处", // Placeholder text when empty
-                            style: TextStyle(color: _solBase01.withOpacity(0.6), fontStyle: FontStyle.italic),
+                            style: TextStyle(color: Color.fromARGB((255 * 0.6).round(), 0x58, 0x6e, 0x75), fontStyle: FontStyle.italic),
                           ),
                   ),
                 ),
@@ -215,11 +214,11 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
           ),
           ElevatedButton(
             onPressed: _uploadSourceCode,
-            child: const Text('编译并上传源代码'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _solBlue,
               foregroundColor: _solBase03,
             ),
+            child: const Text('编译并上传源代码'),
           ),
           const SizedBox(height: 10),
           Expanded(
