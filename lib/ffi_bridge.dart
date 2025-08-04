@@ -90,8 +90,28 @@ typedef GetVmZeroFlagDart = bool Function();
 typedef GetVmSignFlagC = Bool Function();
 typedef GetVmSignFlagDart = bool Function();
 
-typedef LoadProgramC = Pointer<StringArray> Function(Pointer<Char>);
-typedef LoadProgramDart = Pointer<StringArray> Function(Pointer<Char>);
+/// Represents the FfiResult struct from C++.
+final class FfiResult extends Struct {
+  @Int32()
+  external int code;
+
+  external Pointer<Char> message;
+}
+
+// FFI function to free the message string from FfiResult
+typedef FreeFfiResultMessageC = Void Function(Pointer<Char> message);
+typedef FreeFfiResultMessageDart = void Function(Pointer<Char> message);
+
+typedef LoadProgramC =
+    FfiResult Function(
+      Pointer<Char> source,
+      Pointer<Pointer<StringArray>> outProgramArray,
+    );
+typedef LoadProgramDart =
+    FfiResult Function(
+      Pointer<Char> source,
+      Pointer<Pointer<StringArray>> outProgramArray,
+    );
 
 /// A bridge to call native C++ functions for compiler operations.
 class NativeCompilerBridge {
@@ -116,6 +136,11 @@ class NativeCompilerBridge {
   }
 
   // Lookup the C++ functions and bind them to Dart functions
+  static final _freeFfiResultMessage = _dylib
+      .lookupFunction<FreeFfiResultMessageC, FreeFfiResultMessageDart>(
+        'free_ffi_result_message',
+      );
+
   static final _getHardcodedVmInstructions = _dylib
       .lookupFunction<
         GetHardcodedVmInstructionsC,
@@ -180,19 +205,33 @@ class NativeCompilerBridge {
   }
 
   static List<String> uploadSourceCode(String src) {
-    final Pointer<StringArray> nativeArrayPtr = _loadProgram(
-      src.toNativeUtf8().cast<Char>(),
-    );
-    if (nativeArrayPtr == nullptr) {
-      return [];
-    }
+    final Pointer<Char> sourceC = src.toNativeUtf8().cast<Char>();
+    final Pointer<Pointer<StringArray>> outProgramArray =
+        calloc<Pointer<StringArray>>();
 
     try {
-      final List<String> dartCodeLines = nativeArrayPtr.toDartStrings();
-      return dartCodeLines;
+      final FfiResult result = _loadProgram(sourceC, outProgramArray);
+
+      if (result.code != 0) {
+        final String errorMessage = result.message.cast<Utf8>().toDartString();
+        _freeFfiResultMessage(result.message);
+        throw Exception(errorMessage);
+      }
+
+      final Pointer<StringArray> nativeArrayPtr = outProgramArray.value;
+      if (nativeArrayPtr == nullptr) {
+        return [];
+      }
+
+      try {
+        final List<String> dartCodeLines = nativeArrayPtr.toDartStrings();
+        return dartCodeLines;
+      } finally {
+        _freeStringArray(nativeArrayPtr);
+      }
     } finally {
-      // Ensure the C++ allocated memory is always freed
-      _freeStringArray(nativeArrayPtr);
+      calloc.free(sourceC);
+      calloc.free(outProgramArray);
     }
   }
 
