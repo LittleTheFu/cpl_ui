@@ -191,12 +191,24 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
                 flex: 1,
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: _errorMessage.isNotEmpty
-                      ? Text(
-                          _errorMessage,
-                          style: const TextStyle(color: _solRed, fontSize: 16),
-                        )
-                      : const SizedBox.shrink(), // Hide if no error
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 50), // Minimum height for the box
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _solBase01), // Border color
+                      borderRadius: BorderRadius.circular(4.0), // Rounded corners
+                    ),
+                    padding: const EdgeInsets.all(8.0),
+                    alignment: Alignment.topLeft, // Align text to top-left
+                    child: _errorMessage.isNotEmpty
+                        ? Text(
+                            _errorMessage,
+                            style: const TextStyle(color: _solRed, fontSize: 16),
+                          )
+                        : Text(
+                            "错误信息将显示在此处", // Placeholder text when empty
+                            style: TextStyle(color: _solBase01.withOpacity(0.6), fontStyle: FontStyle.italic),
+                          ),
+                  ),
                 ),
               ),
             ],
