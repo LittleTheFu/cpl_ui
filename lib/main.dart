@@ -67,7 +67,8 @@ class AssemblyCodeView extends StatefulWidget {
 }
 
 class _AssemblyCodeViewState extends State<AssemblyCodeView> {
-  List<String> _assemblyCodeLines = [];
+  final TextEditingController _sourceCodeController = TextEditingController();
+  List<String> _assemblyCodeLines = ["请在上方输入源代码并点击 \"编译并上传源代码\" 按钮"];
   int _currentPc = -1;
   List<int> _registers = []; // 用于存储寄存器值
   bool _zeroFlag = false;
@@ -84,6 +85,7 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
 
   @override
   void dispose() {
+    _sourceCodeController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -112,15 +114,14 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
   }
 
   Future<void> _loadAssemblyCode() async {
-    final List<String> code = NativeCompilerBridge.getHardcodedVmAssemblyCode();
-    // final List<String> code = NativeCompilerBridge.uploadSourceCode("1+3*5");
+    // This method will now be used to update the UI based on the _assemblyCodeLines
+    // It will be called after _uploadSourceCode or resetProgram
     final int pc = NativeCompilerBridge.getVmPc();
     final List<int> registers = NativeCompilerBridge.getVmAllRegisters();
     final bool zf = NativeCompilerBridge.getVmZeroFlag();
     final bool sf = NativeCompilerBridge.getVmSignFlag();
     final List<int> memory = NativeCompilerBridge.getVmAllMemory();
     setState(() {
-      _assemblyCodeLines = code;
       _currentPc = pc;
       _registers = registers;
       _zeroFlag = zf;
@@ -130,158 +131,211 @@ class _AssemblyCodeViewState extends State<AssemblyCodeView> {
     _scrollToCurrentLine();
   }
 
+  Future<void> _uploadSourceCode() async {
+    final String sourceCode = _sourceCodeController.text;
+    if (sourceCode.isEmpty) {
+      setState(() {
+        _assemblyCodeLines = ["请输入源代码"];
+      });
+      return;
+    }
+
+    try {
+      final List<String> compiledCode = NativeCompilerBridge.uploadSourceCode(
+        sourceCode,
+      );
+      setState(() {
+        _assemblyCodeLines = compiledCode;
+      });
+      _loadAssemblyCode(); // Update other VM states
+    } catch (e) {
+      setState(() {
+        _assemblyCodeLines = ["编译错误: $e"];
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('汇编代码查看器'), centerTitle: true),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          // Assembly Code View
-          SizedBox(
-            height: double.infinity,
-            width: 400,
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              color: _solBase03,
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: _assemblyCodeLines.length,
-                itemBuilder: (context, index) {
-                  final line = _assemblyCodeLines[index];
-                  final parts = line.split(': ');
-                  String lineNumber = parts.length > 1 ? parts[0] : '';
-                  String instruction = parts.length > 1 ? parts[1] : line;
-                  final bool isCurrentPc = index == _currentPc;
-
-                  return Container(
-                    height: _itemHeight,
-                    color: isCurrentPc ? _solBase02 : Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 60,
-                            child: Text(
-                              lineNumber,
-                              style: const TextStyle(
-                                color: _solBase01,
-                                fontFamily: 'monospace',
-                                fontSize: 14.0,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 300,
-                            child: Text(
-                              instruction,
-                              style: const TextStyle(
-                                color: _solGreen,
-                                fontFamily: 'monospace',
-                                fontSize: 14.0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _sourceCodeController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: '在此输入源代码...',
+                border: OutlineInputBorder(),
+                fillColor: _solBase02,
+                filled: true,
               ),
+              style: TextStyle(color: _solBase0, fontFamily: 'monospace'),
             ),
           ),
-          const VerticalDivider(width: 1, color: _solBase01),
-          // Register View
-          SizedBox(
-            height: double.infinity,
-            width: 200,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Registers",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _solBase0,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 4.0,
-                      children: [
-                        ...List<Widget>.generate(_registers.length, (index) {
-                          return Chip(
-                            label: Text('R$index: ${_registers[index]}'),
-                          );
-                        }),
-                        Chip(
-                          label: const Text(
-                            'ZF',
-                            style: TextStyle(color: _solBase03),
-                          ),
-                          backgroundColor: _zeroFlag ? _solGreen : _solRed,
-                        ),
-                        Chip(
-                          label: const Text(
-                            'SF',
-                            style: TextStyle(color: _solBase03),
-                          ),
-                          backgroundColor: _signFlag ? _solGreen : _solRed,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+          ElevatedButton(
+            onPressed: _uploadSourceCode,
+            child: const Text('编译并上传源代码'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _solBlue,
+              foregroundColor: _solBase03,
             ),
           ),
-          const VerticalDivider(width: 1, color: _solBase01),
-          // Memory View
+          const SizedBox(height: 10),
           Expanded(
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    "Memory View",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _solBase0,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                // Assembly Code View
+                SizedBox(
+                  height: double.infinity,
+                  width: 400,
+                  child: Container(
+                    padding: const EdgeInsets.all(8.0),
+                    color: _solBase03,
                     child: ListView.builder(
-                      itemCount: _memory.length,
+                      controller: _scrollController,
+                      itemCount: _assemblyCodeLines.length,
                       itemBuilder: (context, index) {
-                        return SizedBox(
+                        final line = _assemblyCodeLines[index];
+                        final parts = line.split(': ');
+                        String lineNumber = parts.length > 1 ? parts[0] : '';
+                        String instruction = parts.length > 1 ? parts[1] : line;
+                        final bool isCurrentPc = index == _currentPc;
+
+                        return Container(
                           height: _itemHeight,
-                          child: Row(
-                            children: [
-                              Text(
-                                '0x${(index).toRadixString(16).padLeft(8, '0')}:',
-                                style: const TextStyle(color: _solBase01),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                '0x${_memory[index].toRadixString(16).padLeft(8, '0')}',
-                                style: const TextStyle(color: _solCyan),
-                              ),
-                            ],
+                          color: isCurrentPc ? _solBase02 : Colors.transparent,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: 60,
+                                  child: Text(
+                                    lineNumber,
+                                    style: const TextStyle(
+                                      color: _solBase01,
+                                      fontFamily: 'monospace',
+                                      fontSize: 14.0,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                SizedBox(
+                                  width: 300,
+                                  child: Text(
+                                    instruction,
+                                    style: const TextStyle(
+                                      color: _solGreen,
+                                      fontFamily: 'monospace',
+                                      fontSize: 14.0,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
+                  ),
+                ),
+                const VerticalDivider(width: 1, color: _solBase01),
+                // Register View
+                SizedBox(
+                  height: double.infinity,
+                  width: 200,
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          const Text(
+                            "Registers",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _solBase0,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8.0,
+                            runSpacing: 4.0,
+                            children: [
+                              ...List<Widget>.generate(_registers.length, (index) {
+                                return Chip(
+                                  label: Text('R$index: ${_registers[index]}'),
+                                );
+                              }),
+                              Chip(
+                                label: const Text(
+                                  'ZF',
+                                  style: TextStyle(color: _solBase03),
+                                ),
+                                backgroundColor: _zeroFlag ? _solGreen : _solRed,
+                              ),
+                              Chip(
+                                label: const Text(
+                                  'SF',
+                                  style: TextStyle(color: _solBase03),
+                                ),
+                                backgroundColor: _signFlag ? _solGreen : _solRed,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const VerticalDivider(width: 1, color: _solBase01),
+                // Memory View
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          "Memory View",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _solBase0,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: ListView.builder(
+                            itemCount: _memory.length,
+                            itemBuilder: (context, index) {
+                              return SizedBox(
+                                height: _itemHeight,
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      '0x${(index).toRadixString(16).padLeft(8, '0')}:',
+                                      style: const TextStyle(color: _solBase01),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '0x${_memory[index].toRadixString(16).padLeft(8, '0')}',
+                                      style: const TextStyle(color: _solCyan),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
